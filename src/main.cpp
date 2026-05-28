@@ -1,5 +1,7 @@
 #include "main.h"
 
+
+ASSET(path_txt);
 // --- Motors ---
 // Standard PROS motor groups. (Negative ports reverse the motor)
 MotorGroup leftMotors({1, 9});
@@ -27,6 +29,7 @@ OdomSensors sensors(nullptr, // vertical tracking wheel 1
 
 // --- PID Controllers ---
 // Placeholder values - you will need to tune these!
+//ControllerSettings(kP, kI, kD, windupRange, smallError, smallErrorTime, largeError, largeErrorTime, slew)
 ControllerSettings lateral_controller(10, 0, 3, 3, 1, 100, 3, 500, 20);
 ControllerSettings angular_controller(2, 0, 10, 3, 1, 100, 3, 500, 0);
 
@@ -77,6 +80,20 @@ void competition_initialize() {}
 
 void autonomous() {}
 
+void follow_path() {
+    // 1. Start Position
+    //The X, Y, and heading must match the start of your path
+    chassis.setPose(0, 0, 0); // Start at origin
+
+
+    // 2. Follow Path
+    //Parameters:(asset name, lookahead distance, timeout in milliseconds)
+    chassis.follow(path_txt, 15, 4000);
+
+    //3. Wait until path is complete
+    chassis.waitUntilDone();
+}
+
 /**
  * Runs the operator control code.
  */
@@ -104,21 +121,18 @@ void opcontrol() {
     while (true) {
        
         // Read joystick values
-        int leftY = master.get_analog(ANALOG_LEFT_Y);
-        int rightY = master.get_analog(ANALOG_RIGHT_Y);
-        int rightX = master.get_analog(ANALOG_RIGHT_X);
+        int throttle = master.get_analog(ANALOG_LEFT_Y);
+        int turn = master.get_analog(ANALOG_RIGHT_X);
 
         // Default manual drive (curvature)
-        chassis.curvature(leftY, rightX);
 
-        // --- Metric Movement Test (~30cm) ---
-        if (master.get_digital_new_press(DIGITAL_X)) {
-            chassis.setPose(0, 0, 0);
-            chassis.moveToPoint(0, 11.81, 2000);
-            chassis.waitUntilDone();
-        }
+        chassis.curvature(throttle, turn);
 
-        // --- 2. Drivetrain (alternate modes) ---
+        // ---Follow Predefined Path---
+            if (master.get_digital_new_press(DIGITAL_X)) {
+                follow_path();
+            }
+
 
         // --- 3. Intake Control ---
         if (master.get_digital(DIGITAL_R2)) {
@@ -153,13 +167,13 @@ void opcontrol() {
 
 
         if (driveMode == 0) {
-            chassis.tank(leftY, rightY);
+            chassis.tank(throttle, throttle);
         } 
         else if (driveMode == 1) {
-            chassis.arcade(leftY, rightX);
+            chassis.arcade(throttle, turn);
         } 
         else if (driveMode == 2) {
-            chassis.curvature(leftY, rightX);
+            chassis.curvature(throttle, turn);
         }
 
         delay(10); 
